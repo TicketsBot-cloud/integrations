@@ -1,0 +1,13 @@
+name = "fivem"
+main = "index.js"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[observability.logs]
+enabled = true
+
+[vars]
+SENTRY_DSN = "https://f7d1718105706ab2e6f4402d4bc7b802@sentry.tkts.bot/13"
+
+# Secrets (set via `wrangler secret put <NAME>`):
+#   FIVEM_AUTH_KEY — token expected in the Authorization header

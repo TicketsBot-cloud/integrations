@@ -1,0 +1,28 @@
+name = "integration-proxy"
+main = "index.js"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[observability.logs]
+enabled = true
+
+[vars]
+SENTRY_DSN = "https://f7d1718105706ab2e6f4402d4bc7b802@sentry.tkts.bot/13"
+
+# Upstream Workers reached via service bindings so traffic stays on
+# Cloudflare's network rather than egressing via the public internet.
+[[services]]
+binding = "FIVEM"
+service = "fivem"
+
+[[services]]
+binding = "GUILDLOOKUP"
+service = "guild-lookup-worker"
+
+[[services]]
+binding = "BLOXLINK"
+service = "bloxlink"
+
+# Secrets (set via `wrangler secret put <NAME>`):
+#   PROXY_AUTH_HEADER — name of the header callers send the auth token in
+#   PROXY_AUTH_KEY    — shared token expected in that header
