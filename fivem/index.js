@@ -50,15 +50,11 @@ function withProfileUrl(player) {
 }
 
 async function handleValidate(request) {
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return jsonResponse({ error: "Invalid request body" }, { status: 400 });
+  const serverId = request.headers.get("X-FiveM-Server-Id");
+  if (serverId === null) {
+    return jsonResponse({ error: "Missing X-FiveM-Server-Id header" }, { status: 400 });
   }
-
-  const { server_id: serverId } = body;
-  if (typeof serverId !== "string" || !SERVER_ID_REGEX.test(serverId)) {
+  if (!SERVER_ID_REGEX.test(serverId)) {
     return jsonResponse({ error: "Invalid FiveM server ID" }, { status: 400 });
   }
 
