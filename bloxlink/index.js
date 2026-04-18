@@ -4,10 +4,10 @@ const BLOXLINK_API = "https://api.blox.link/v4/public";
 const ROBLOX_USERS_API = "https://users.roblox.com/v1";
 const CACHE_TTL_SECONDS = 86_400;
 
-function jsonResponse(body, { status = 200, extraHeaders = {} } = {}) {
+function jsonResponse(body, { status = 200 } = {}) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "content-type": "application/json", ...extraHeaders },
+    headers: { "content-type": "application/json" },
   });
 }
 
@@ -92,16 +92,12 @@ async function handleRequest(request, env) {
   let robloxId;
   try {
     robloxId = await fetchRobloxId(apiKey, guildId, userId);
-  } catch {
-    return emptyResponse();
+  } catch (err) {
+    if (err.message === "User not found in Bloxlink") return emptyResponse();
+    throw err;
   }
 
-  let user;
-  try {
-    user = await fetchRobloxUser(robloxId);
-  } catch {
-    return emptyResponse();
-  }
+  const user = await fetchRobloxUser(robloxId);
 
   const payload = JSON.stringify(buildPayload(user));
   await env.INTEGRATION_CACHE.put(cacheKey, payload, { expirationTtl: CACHE_TTL_SECONDS });

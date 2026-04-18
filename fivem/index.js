@@ -10,10 +10,10 @@ function bigIntEncoder(_key, value) {
   return typeof value === "bigint" ? value.toString() : value;
 }
 
-function jsonResponse(status, body, extraHeaders = {}) {
-  return new Response(JSON.stringify(body, bigIntEncoder), {
+function jsonResponse(body, { status = 200 } = {}) {
+  return new Response(JSON.stringify(body), {
     status,
-    headers: { "content-type": "application/json", ...extraHeaders },
+    headers: { "content-type": "application/json" },
   });
 }
 
@@ -50,44 +50,53 @@ function withProfileUrl(player) {
 }
 
 async function handleValidate(request) {
-  const { server_id: serverId } = await request.json();
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return jsonResponse({ error: "Invalid request body" }, { status: 400 });
+  }
+
+  const { server_id: serverId } = body;
   if (typeof serverId !== "string" || !SERVER_ID_REGEX.test(serverId)) {
-    return jsonResponse(400, { error: "Invalid FiveM server ID" });
+    return jsonResponse({ error: "Invalid FiveM server ID" }, { status: 400 });
   }
 
   const res = await fetchServer(serverId);
   if (res.status === 404) {
-    return jsonResponse(400, {
-      error: "FiveM server ID is invalid / server is not online",
-    });
+    return jsonResponse(
+      { error: "FiveM server ID is invalid / server is not online" },
+      { status: 400 },
+    );
   }
   if (res.status !== 200) {
-    return jsonResponse(500, {
-      error: `FiveM server API responded with code ${res.status} - perhaps it is having an outage`,
-    });
+    return jsonResponse(
+      { error: `FiveM server API responded with code ${res.status} - perhaps it is having an outage` },
+      { status: 500 },
+    );
   }
-  return jsonResponse(200, {});
+  return jsonResponse({});
 }
 
 async function handleLookup(request, env) {
   const serverId = request.headers.get("X-FiveM-Server-Id");
   if (serverId === null) {
-    return jsonResponse(400, { error: "Missing X-FiveM-Server-Id header" });
+    return jsonResponse({ error: "Missing X-FiveM-Server-Id header" }, { status: 400 });
   }
   if (!SERVER_ID_REGEX.test(serverId)) {
-    return jsonResponse(400, { error: "Invalid X-FiveM-Server-Id header" });
+    return jsonResponse({ error: "Invalid X-FiveM-Server-Id header" }, { status: 400 });
   }
 
   let body;
   try {
     body = await request.json();
   } catch {
-    return jsonResponse(400, { error: "Invalid request body" });
+    return jsonResponse({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const userId = body.user_id;
+  const { user_id: userId } = body;
   if (!userId) {
-    return jsonResponse(400, { error: "Invalid request body" });
+    return jsonResponse({ error: "Invalid request body" }, { status: 400 });
   }
 
   const cacheKey = `fivem:${serverId}:${userId}`;
@@ -101,10 +110,11 @@ async function handleLookup(request, env) {
 
   const res = await fetchServer(serverId);
   if (res.status !== 200) {
-    console.log(`server api responded with ${res.status}: ${await res.text()}`);
-    return jsonResponse(500, {
-      error: `server api responded with ${res.status}`,
-    });
+    console.log(`FiveM API responded with ${res.status}: ${await res.text()}`);
+    return jsonResponse(
+      { error: `FiveM server API responded with ${res.status}` },
+      { status: 500 },
+    );
   }
 
   const data = await res.json();
@@ -112,7 +122,7 @@ async function handleLookup(request, env) {
     p.identifiers.includes(`discord:${userId}`),
   );
   if (player === undefined) {
-    return jsonResponse(404, {}, { "x-from-cache": "false" });
+    return jsonResponse({}, { status: 404 });
   }
 
   const payload = JSON.stringify(withProfileUrl(extractFields(player)), bigIntEncoder);
@@ -126,11 +136,14 @@ async function handleLookup(request, env) {
 
 async function handleRequest(request, env) {
   if (request.headers.get("Authorization") !== env.FIVEM_AUTH_KEY) {
-    return jsonResponse(401, { error: "Invalid auth key" });
+    return jsonResponse({ error: "Invalid auth key" }, { status: 401 });
+  }
+
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method Not Allowed" }, { status: 405 });
   }
 
   const url = new URL(request.url);
-  console.log(`Received request ${url}`);
 
   if (url.pathname === "/validate") {
     return handleValidate(request);
