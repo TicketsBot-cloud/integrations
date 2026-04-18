@@ -3,7 +3,7 @@ import * as Sentry from "@sentry/cloudflare";
 const BLOXLINK_API = "https://api.blox.link/v4/public";
 const ROBLOX_USERS_API = "https://users.roblox.com/v1";
 const CACHE_TTL_SECONDS = 86_400;
-const API_KEY_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const API_KEY_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i; // UUID v4 format
 
 function jsonResponse(body, { status = 200 } = {}) {
   return new Response(JSON.stringify(body), {
