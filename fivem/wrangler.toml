@@ -9,5 +9,9 @@ enabled = true
 [vars]
 SENTRY_DSN = "https://f7d1718105706ab2e6f4402d4bc7b802@sentry.tkts.bot/13"
 
+[[kv_namespaces]]
+binding = "INTEGRATION_CACHE"
+id = "fbdf23642f6a40d0b5876abf3265910d"
+
 # Secrets (set via `wrangler secret put <NAME>`):
 #   FIVEM_AUTH_KEY — token expected in the Authorization header
