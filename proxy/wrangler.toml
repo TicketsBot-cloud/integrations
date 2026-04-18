@@ -16,10 +16,6 @@ binding = "FIVEM"
 service = "fivem"
 
 [[services]]
-binding = "GUILDLOOKUP"
-service = "guild-lookup-worker"
-
-[[services]]
 binding = "BLOXLINK"
 service = "bloxlink"
 
