@@ -53,7 +53,7 @@ function buildPayload(user) {
 }
 
 async function handleRequest(request, env) {
-  if (request.headers.get("X-Tickets-Auth") !== env.BLOXLINK_AUTH_KEY) {
+  if (request.headers.get("Authorization") !== env.BLOXLINK_AUTH_KEY) {
     return new Response("Invalid auth key", { status: 401 });
   }
 

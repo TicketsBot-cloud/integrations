@@ -14,4 +14,4 @@ binding = "CACHE"
 id = "fbdf23642f6a40d0b5876abf3265910d"
 
 # Secrets (set via `wrangler secret put <NAME>`):
-#   BLOXLINK_AUTH_KEY — token expected in the X-Tickets-Auth header
+#   BLOXLINK_AUTH_KEY — token expected in the Authorization header

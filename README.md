@@ -97,7 +97,7 @@ New integrations are picked up automatically — no workflow edits needed.
 | `proxy` | `PROXY_AUTH_HEADER` | Header name callers send the auth token in. |
 | `proxy` | `PROXY_AUTH_KEY` | Shared token expected in that header. |
 | `fivem` | `FIVEM_AUTH_KEY` | Token expected in the `Authorization` header. |
-| `bloxlink` | `BLOXLINK_AUTH_KEY` | Token expected in the `X-Tickets-Auth` header. |
+| `bloxlink` | `BLOXLINK_AUTH_KEY` | Token expected in the `Authorization` header. |
 
 `SENTRY_DSN` for each Worker is configured in its `wrangler.toml` under `[vars]`.
 
