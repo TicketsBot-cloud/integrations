@@ -3,6 +3,7 @@ import * as Sentry from "@sentry/cloudflare";
 const BLOXLINK_API = "https://api.blox.link/v4/public";
 const ROBLOX_USERS_API = "https://users.roblox.com/v1";
 const CACHE_TTL_SECONDS = 86_400;
+const API_KEY_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function jsonResponse(body, { status = 200 } = {}) {
   return new Response(JSON.stringify(body), {
@@ -51,15 +52,19 @@ function buildPayload(user) {
   };
 }
 
-async function handleRequest(request, env) {
-  if (request.headers.get("Authorization") !== env.BLOXLINK_AUTH_KEY) {
-    return jsonResponse({ error: "Invalid auth key" }, { status: 401 });
+async function handleValidate(request) {
+  const apiKey = request.headers.get("X-Bloxlink-Api-Key");
+  if (!apiKey) {
+    return jsonResponse({ error: "Missing X-Bloxlink-Api-Key header" }, { status: 400 });
+  }
+  if (!API_KEY_REGEX.test(apiKey)) {
+    return jsonResponse({ error: "Invalid Bloxlink API key format" }, { status: 400 });
   }
 
-  if (request.method !== "POST") {
-    return jsonResponse({ error: "Method Not Allowed" }, { status: 405 });
-  }
+  return jsonResponse({});
+}
 
+async function handleLookup(request, env) {
   let body;
   try {
     body = await request.json();
@@ -83,10 +88,7 @@ async function handleRequest(request, env) {
 
   const apiKey = request.headers.get("X-Bloxlink-Api-Key");
   if (!apiKey) {
-    return jsonResponse(
-      { error: "Missing X-Bloxlink-Api-Key header" },
-      { status: 400 },
-    );
+    return jsonResponse({ error: "Missing X-Bloxlink-Api-Key header" }, { status: 400 });
   }
 
   let robloxId;
@@ -106,6 +108,23 @@ async function handleRequest(request, env) {
     status: 200,
     headers: { "content-type": "application/json", "x-from-cache": "false" },
   });
+}
+
+async function handleRequest(request, env) {
+  if (request.headers.get("Authorization") !== env.BLOXLINK_AUTH_KEY) {
+    return jsonResponse({ error: "Invalid auth key" }, { status: 401 });
+  }
+
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method Not Allowed" }, { status: 405 });
+  }
+
+  const url = new URL(request.url);
+
+  if (url.pathname === "/validate") {
+    return handleValidate(request);
+  }
+  return handleLookup(request, env);
 }
 
 export default Sentry.withSentry(
