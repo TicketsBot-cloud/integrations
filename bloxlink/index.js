@@ -4,15 +4,14 @@ const BLOXLINK_API = "https://api.blox.link/v4/public";
 const ROBLOX_USERS_API = "https://users.roblox.com/v1";
 const CACHE_TTL_SECONDS = 86_400;
 
-function jsonResponse(body, { status = 200, headers = {} } = {}) {
-  const payload = typeof body === "string" ? body : JSON.stringify(body);
-  return new Response(payload, {
+function jsonResponse(body, { status = 200, extraHeaders = {} } = {}) {
+  return new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json", ...headers },
+    headers: { "content-type": "application/json", ...extraHeaders },
   });
 }
 
-const emptyResponse = () => jsonResponse("{}");
+const emptyResponse = () => jsonResponse({});
 
 async function fetchRobloxId(apiKey, guildId, userId) {
   const res = await fetch(
@@ -54,34 +53,40 @@ function buildPayload(user) {
 
 async function handleRequest(request, env) {
   if (request.headers.get("Authorization") !== env.BLOXLINK_AUTH_KEY) {
-    return new Response("Invalid auth key", { status: 401 });
+    return jsonResponse({ error: "Invalid auth key" }, { status: 401 });
   }
 
   if (request.method !== "POST") {
-    return new Response("Method Not Allowed", { status: 405 });
+    return jsonResponse({ error: "Method Not Allowed" }, { status: 405 });
   }
 
   let body;
   try {
     body = await request.json();
   } catch {
-    return new Response("Invalid request body", { status: 400 });
+    return jsonResponse({ error: "Invalid request body" }, { status: 400 });
   }
 
   const { guild_id: guildId, user_id: userId } = body;
   if (!guildId || !userId) {
-    return new Response("Invalid request body", { status: 400 });
+    return jsonResponse({ error: "Invalid request body" }, { status: 400 });
   }
 
   const cacheKey = `bloxlink:${guildId}:${userId}`;
   const cached = await env.INTEGRATION_CACHE.get(cacheKey);
   if (cached !== null) {
-    return jsonResponse(cached);
+    return new Response(cached, {
+      status: 200,
+      headers: { "content-type": "application/json", "x-from-cache": "true" },
+    });
   }
 
   const apiKey = request.headers.get("X-Bloxlink-Api-Key");
   if (!apiKey) {
-    return new Response("Missing X-Bloxlink-Api-Key header", { status: 400 });
+    return jsonResponse(
+      { error: "Missing X-Bloxlink-Api-Key header" },
+      { status: 400 },
+    );
   }
 
   let robloxId;
@@ -101,7 +106,10 @@ async function handleRequest(request, env) {
   const payload = JSON.stringify(buildPayload(user));
   await env.INTEGRATION_CACHE.put(cacheKey, payload, { expirationTtl: CACHE_TTL_SECONDS });
 
-  return jsonResponse(payload);
+  return new Response(payload, {
+    status: 200,
+    headers: { "content-type": "application/json", "x-from-cache": "false" },
+  });
 }
 
 export default Sentry.withSentry(
