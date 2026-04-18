@@ -2,6 +2,7 @@ import * as Sentry from "@sentry/cloudflare";
 
 const SERVER_ID_REGEX = /^[a-z0-9]{5,10}$/;
 const FIVEM_API_BASE = "https://servers-frontend.fivem.net/api/servers/single";
+const CACHE_TTL_SECONDS = 300;
 const USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:102.0) Gecko/20100101 Firefox/102.0";
 
@@ -68,18 +69,34 @@ async function handleValidate(request) {
   return jsonResponse(200, {});
 }
 
-async function handleLookup(url) {
-  const snowflake = url.searchParams.get("snowflake");
-  if (snowflake === null) {
-    return jsonResponse(400, { error: "Missing snowflake" });
-  }
-
-  const serverId = url.searchParams.get("serverid");
+async function handleLookup(request, env) {
+  const serverId = request.headers.get("X-FiveM-Server-Id");
   if (serverId === null) {
-    return jsonResponse(400, { error: "Missing serverid" });
+    return jsonResponse(400, { error: "Missing X-FiveM-Server-Id header" });
   }
   if (!SERVER_ID_REGEX.test(serverId)) {
-    return jsonResponse(400, { error: "Invalid serverid" });
+    return jsonResponse(400, { error: "Invalid X-FiveM-Server-Id header" });
+  }
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return jsonResponse(400, { error: "Invalid request body" });
+  }
+
+  const userId = body.user_id;
+  if (!userId) {
+    return jsonResponse(400, { error: "Invalid request body" });
+  }
+
+  const cacheKey = `fivem:${serverId}:${userId}`;
+  const cached = await env.INTEGRATION_CACHE.get(cacheKey);
+  if (cached !== null) {
+    return new Response(cached, {
+      status: 200,
+      headers: { "content-type": "application/json", "x-from-cache": "true" },
+    });
   }
 
   const res = await fetchServer(serverId);
@@ -92,14 +109,18 @@ async function handleLookup(url) {
 
   const data = await res.json();
   const player = data.Data.players.find((p) =>
-    p.identifiers.includes(`discord:${snowflake}`),
+    p.identifiers.includes(`discord:${userId}`),
   );
   if (player === undefined) {
     return jsonResponse(404, {}, { "x-from-cache": "false" });
   }
 
-  return jsonResponse(200, withProfileUrl(extractFields(player)), {
-    "x-from-cache": "false",
+  const payload = JSON.stringify(withProfileUrl(extractFields(player)), bigIntEncoder);
+  await env.INTEGRATION_CACHE.put(cacheKey, payload, { expirationTtl: CACHE_TTL_SECONDS });
+
+  return new Response(payload, {
+    status: 200,
+    headers: { "content-type": "application/json", "x-from-cache": "false" },
   });
 }
 
@@ -114,7 +135,7 @@ async function handleRequest(request, env) {
   if (url.pathname === "/validate") {
     return handleValidate(request);
   }
-  return handleLookup(url);
+  return handleLookup(request, env);
 }
 
 export default Sentry.withSentry(

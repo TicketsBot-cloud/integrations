@@ -14,4 +14,8 @@ binding = "INTEGRATION_CACHE"
 id = "fbdf23642f6a40d0b5876abf3265910d"
 
 # Secrets (set via `wrangler secret put <NAME>`):
-#   FIVEM_AUTH_KEY — token expected in the Authorization header
+#   FIVEM_AUTH_KEY — static guard token; callers must send this in the Authorization header
+#
+# Integration request headers (configured in the dashboard):
+#   Authorization: <FIVEM_AUTH_KEY value>      (static, proves the caller is TicketsBot)
+#   X-FiveM-Server-Id: %fivem_server_id%       (per-guild secret; guild admin provides their FiveM server ID on activation)

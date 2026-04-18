@@ -61,11 +61,6 @@ async function handleRequest(request, env) {
     return new Response("Method Not Allowed", { status: 405 });
   }
 
-  const apiKey = request.headers.get("Authorization");
-  if (!apiKey) {
-    return new Response("Missing Authorization header", { status: 400 });
-  }
-
   let body;
   try {
     body = await request.json();
@@ -79,9 +74,14 @@ async function handleRequest(request, env) {
   }
 
   const cacheKey = `bloxlink:${guildId}:${userId}`;
-  const cached = await env.CACHE.get(cacheKey);
+  const cached = await env.INTEGRATION_CACHE.get(cacheKey);
   if (cached !== null) {
     return jsonResponse(cached);
+  }
+
+  const apiKey = request.headers.get("X-Bloxlink-Api-Key");
+  if (!apiKey) {
+    return new Response("Missing X-Bloxlink-Api-Key header", { status: 400 });
   }
 
   let robloxId;
@@ -99,7 +99,7 @@ async function handleRequest(request, env) {
   }
 
   const payload = JSON.stringify(buildPayload(user));
-  await env.CACHE.put(cacheKey, payload, { expirationTtl: CACHE_TTL_SECONDS });
+  await env.INTEGRATION_CACHE.put(cacheKey, payload, { expirationTtl: CACHE_TTL_SECONDS });
 
   return jsonResponse(payload);
 }
