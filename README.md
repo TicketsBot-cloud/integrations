@@ -68,7 +68,7 @@ The `proxy` Worker sits in front of the others: callers authenticate against the
 | Folder | Purpose |
 |--------|---------|
 | [`proxy/`](./proxy) | Shared auth gate and router. Forwards requests for known hosts to sibling Workers via service bindings; everything else falls through to a public `fetch()`. |
-| [`fivem/`](./fivem) | Looks up a FiveM server by ID and resolves a Discord snowflake to a player on that server. |
+| [`fivem/`](./fivem) | Resolves a Discord user to a player on a guild's FiveM server, with a KV-backed cache. |
 | [`bloxlink/`](./bloxlink) | Resolves a Discord user to their linked Roblox account via Bloxlink, with a KV-backed cache. |
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
@@ -96,8 +96,8 @@ New integrations are picked up automatically — no workflow edits needed.
 |--------|--------|---------|
 | `proxy` | `PROXY_AUTH_HEADER` | Header name callers send the auth token in. |
 | `proxy` | `PROXY_AUTH_KEY` | Shared token expected in that header. |
-| `fivem` | `FIVEM_AUTH_KEY` | Token expected in the `Authorization` header. |
-| `bloxlink` | `BLOXLINK_AUTH_KEY` | Token expected in the `Authorization` header. |
+| `fivem` | `FIVEM_AUTH_KEY` | Static guard token; callers must send this in the `Authorization` header. |
+| `bloxlink` | `BLOXLINK_AUTH_KEY` | Static guard token; callers must send this in the `Authorization` header. |
 
 `SENTRY_DSN` for each Worker is configured in its `wrangler.toml` under `[vars]`.
 
