@@ -43,12 +43,12 @@ async function fetchRobloxUser(robloxId) {
 function buildPayload(user) {
   const createdTs = Math.floor(new Date(user.created).getTime() / 1000);
   return {
-    roblox_username: user.name,
-    roblox_id: String(user.id),
-    roblox_display_name: user.displayName,
-    roblox_profile_url: `https://www.roblox.com/users/${user.id}/profile`,
-    roblox_account_age: `<t:${createdTs}:R>`,
-    roblox_account_created: `<t:${createdTs}:D>`,
+    bloxlink_username: user.name,
+    bloxlink_id: String(user.id),
+    bloxlink_display_name: user.displayName,
+    bloxlink_profile_url: `https://www.roblox.com/users/${user.id}/profile`,
+    bloxlink_account_age: `<t:${createdTs}:R>`,
+    bloxlink_account_created: `<t:${createdTs}:D>`,
   };
 }
 
