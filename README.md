@@ -67,7 +67,6 @@ The `proxy` Worker sits in front of the others: callers authenticate against the
 
 | Folder | Purpose |
 |--------|---------|
-
 | [`proxy/`](./proxy) | Shared auth gate and router. Forwards requests for known hosts to sibling Workers via service bindings; everything else falls through to a public `fetch()`. |
 | [`fivem/`](./fivem) | Resolves a Discord user to a player on a guild's FiveM server, with a KV-backed cache. |
 | [`bloxlink/`](./bloxlink) | Resolves a Discord user to their linked Roblox account via Bloxlink, with a KV-backed cache. |
@@ -88,7 +87,6 @@ New integrations are picked up automatically — no workflow edits needed.
 
 | Secret | Purpose |
 |--------|---------|
-
 | `CLOUDFLARE_API_TOKEN` | API token scoped to `Workers Scripts: Edit`, `Workers KV Storage: Edit`, `Workers Observability: Edit`, `Account Settings: Read`, `User Details: Read`. |
 | `CLOUDFLARE_ACCOUNT_ID` | Cloudflare account that owns the Workers. |
 
@@ -96,7 +94,6 @@ New integrations are picked up automatically — no workflow edits needed.
 
 | Worker | Secret | Purpose |
 |--------|--------|---------|
-
 | `proxy` | `PROXY_AUTH_HEADER` | Header name callers send the auth token in. |
 | `proxy` | `PROXY_AUTH_KEY` | Shared token expected in that header. |
 | `fivem` | `FIVEM_AUTH_KEY` | Static guard token; callers must send this in the `Authorization` header. |

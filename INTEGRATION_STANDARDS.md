@@ -67,7 +67,6 @@ Every worker **must** wrap its `fetch` handler with `Sentry.withSentry` from `@s
 
 | Field | Value |
 |-------|-------|
-
 | `dsn` | `env.SENTRY_DSN` |
 | `tracesSampleRate` | `1.0` |
 | `sendDefaultPii` | `true` |
@@ -194,7 +193,6 @@ Examples:
 
 | Data type | `expirationTtl` |
 |-----------|-----------------|
-
 | Slow-changing (profile data, account info) | `86400` (24 h) |
 | Live / session data (online players) | `300` (5 min) |
 
@@ -231,7 +229,6 @@ return new Response(payload, {
 
 | Condition | Status | Body |
 |-----------|--------|------|
-
 | Success with data | `200` | `{ ...fields }` |
 | User not found / not linked | `200` | `{}` |
 | Bad request (missing field, invalid format) | `400` | `{ "error": "..." }` |
