@@ -118,7 +118,7 @@ async function handleLookup(request, env) {
     p.identifiers.includes(`discord:${userId}`),
   );
   if (player === undefined) {
-    return jsonResponse({}, { status: 404 });
+    return jsonResponse({});
   }
 
   const payload = JSON.stringify(withProfileUrl(extractFields(player)), bigIntEncoder);

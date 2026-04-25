@@ -1,5 +1,3 @@
-<a id="readme-top"></a>
-
 [![Contributors][contributors-shield]][contributors-url]
 [![Forks][forks-shield]][forks-url]
 [![Stargazers][stars-shield]][stars-url]
@@ -16,7 +14,7 @@
 <h3 align="center">Tickets Bot - Integrations</h3>
 
   <p align="center">
-    Cloudflare Workers powering third-party integrations for Tickets — the simple, customisable and powerful Discord ticket system.
+    Cloudflare Workers powering public integrations for Tickets — the simple, customisable and powerful Discord ticket system.
     <br />
     <a href="https://docs.tickets.bot"><strong>Explore the docs »</strong></a>
     <br />
@@ -50,28 +48,23 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-This repository contains the Cloudflare Workers that power Tickets' third-party integrations. Each folder is an independent Worker with its own `wrangler.toml` and `package.json`, deployed via a shared GitHub Actions workflow.
+This repository contains the Cloudflare Workers that power Tickets' public integrations. Each folder is an independent Worker with its own `wrangler.toml` and `package.json`, deployed via a shared GitHub Actions workflow.
 
 The `proxy` Worker sits in front of the others: callers authenticate against the proxy once, and the proxy forwards matching requests to sibling Workers via service bindings so traffic stays on Cloudflare's network rather than egressing via the public internet.
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ### Built With
 
 * [![Cloudflare Workers][Workers]][Workers-url]
 * [![JavaScript][JavaScript]][JavaScript-url]
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
 ### Integrations
 
 | Folder | Purpose |
 |--------|---------|
+
 | [`proxy/`](./proxy) | Shared auth gate and router. Forwards requests for known hosts to sibling Workers via service bindings; everything else falls through to a public `fetch()`. |
 | [`fivem/`](./fivem) | Resolves a Discord user to a player on a guild's FiveM server, with a KV-backed cache. |
 | [`bloxlink/`](./bloxlink) | Resolves a Discord user to their linked Roblox account via Bloxlink, with a KV-backed cache. |
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 <!-- DEPLOYING -->
 ## Deploying
@@ -87,6 +80,7 @@ New integrations are picked up automatically — no workflow edits needed.
 
 | Secret | Purpose |
 |--------|---------|
+
 | `CLOUDFLARE_API_TOKEN` | API token scoped to `Workers Scripts: Edit`, `Workers KV Storage: Edit`, `Workers Observability: Edit`, `Account Settings: Read`, `User Details: Read`. |
 | `CLOUDFLARE_ACCOUNT_ID` | Cloudflare account that owns the Workers. |
 
@@ -94,6 +88,7 @@ New integrations are picked up automatically — no workflow edits needed.
 
 | Worker | Secret | Purpose |
 |--------|--------|---------|
+
 | `proxy` | `PROXY_AUTH_HEADER` | Header name callers send the auth token in. |
 | `proxy` | `PROXY_AUTH_KEY` | Shared token expected in that header. |
 | `fivem` | `FIVEM_AUTH_KEY` | Static guard token; callers must send this in the `Authorization` header. |
@@ -101,17 +96,15 @@ New integrations are picked up automatically — no workflow edits needed.
 
 `SENTRY_DSN` for each Worker is configured in its `wrangler.toml` under `[vars]`.
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
 <!-- ADDING -->
 ## Adding a new integration
+
+Before writing any code, read [`INTEGRATION_STANDARDS.md`](./INTEGRATION_STANDARDS.md) — it defines what every Worker in this repo must implement.
 
 1. Create a new folder at the repository root (e.g. `myservice/`).
 2. Add `index.js`, `wrangler.toml`, and `package.json`.
 3. Commit and push to `main` — the deploy workflow auto-discovers the new folder.
 4. If the Worker should be reachable via the `proxy`, add an entry to `SERVICE_BINDINGS` in `proxy/index.js` and a matching `[[services]]` block in `proxy/wrangler.toml`, then redeploy the proxy (service bindings require the target Worker to already exist).
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 <!-- CONTRIBUTING -->
 ## Contributing
@@ -127,8 +120,6 @@ Don't forget to give the project a star! Thanks again!
 4. Push to the Branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
 ### Top contributors
 
 <a href="https://github.com/TicketsBot-cloud/integrations/graphs/contributors">
@@ -140,14 +131,10 @@ Don't forget to give the project a star! Thanks again!
 
 Distributed under the MIT license. See `LICENSE` for more information.
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
 <!-- ACKNOWLEDGMENTS -->
 ## Acknowledgments
 
 * [TicketsBot.net](https://ticketsbot.net) For creating the original Tickets Bot
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 <!-- MARKDOWN LINKS & IMAGES -->
 [contributors-shield]: https://img.shields.io/github/contributors/TicketsBot-cloud/integrations.svg?style=for-the-badge
