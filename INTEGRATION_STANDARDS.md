@@ -175,12 +175,12 @@ return handleLookup(request, env);
 
 Caching is **not required**, but **must** be used whenever upstream data is reasonably stable across requests.
 
-Use the shared KV namespace binding `INTEGRATION_CACHE` (id `7901ae2b471145d4ab7b8535c158d892`). Declare it in `wrangler.toml`:
+Use the shared KV namespace binding `INTEGRATION_CACHE` (id `fbdf23642f6a40d0b5876abf3265910d`). Declare it in `wrangler.toml`:
 
 ```toml
 [[kv_namespaces]]
 binding = "INTEGRATION_CACHE"
-id = "7901ae2b471145d4ab7b8535c158d892"
+id = "fbdf23642f6a40d0b5876abf3265910d"
 ```
 
 **Cache key format:** `<integration>:<discriminating_secret_or_scope>:<user_id>`
