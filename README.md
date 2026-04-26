@@ -16,7 +16,7 @@
 <h3 align="center">Tickets Bot - Integrations</h3>
 
   <p align="center">
-    Cloudflare Workers powering third-party integrations for Tickets — the simple, customisable and powerful Discord ticket system.
+    Cloudflare Workers powering public integrations for Tickets — the simple, customisable and powerful Discord ticket system.
     <br />
     <a href="https://docs.tickets.bot"><strong>Explore the docs »</strong></a>
     <br />
@@ -50,7 +50,7 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-This repository contains the Cloudflare Workers that power Tickets' third-party integrations. Each folder is an independent Worker with its own `wrangler.toml` and `package.json`, deployed via a shared GitHub Actions workflow.
+This repository contains the Cloudflare Workers that power Tickets' public integrations. Each folder is an independent Worker with its own `wrangler.toml` and `package.json`, deployed via a shared GitHub Actions workflow.
 
 The `proxy` Worker sits in front of the others: callers authenticate against the proxy once, and the proxy forwards matching requests to sibling Workers via service bindings so traffic stays on Cloudflare's network rather than egressing via the public internet.
 
@@ -105,6 +105,8 @@ New integrations are picked up automatically — no workflow edits needed.
 
 <!-- ADDING -->
 ## Adding a new integration
+
+Before writing any code, read [`INTEGRATION_STANDARDS.md`](./INTEGRATION_STANDARDS.md) — it defines what every Worker in this repo must implement.
 
 1. Create a new folder at the repository root (e.g. `myservice/`).
 2. Add `index.js`, `wrangler.toml`, and `package.json`.
