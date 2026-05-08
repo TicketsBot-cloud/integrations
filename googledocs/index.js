@@ -5,7 +5,7 @@ const GOOGLE_SHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets";
 const DEFAULT_SHEET_TAB = "Tickets";
 const DEFAULT_SPREADSHEET_ID_HEADER = "X-Tickets-Google-Sheets-Id";
 const DEFAULT_SHEET_TAB_HEADER = "X-Tickets-Google-Sheet-Tab";
-const GOOGLE_WRITE_MAX_ATTEMPTS = 2;
+const GOOGLE_WRITE_MAX_ATTEMPTS = 5;
 const GOOGLE_WRITE_DEBOUNCE_MS = 750;
 const GOOGLE_WRITE_MIN_INTERVAL_MS = 1500;
 const BOT_API_URL_HEADER = "X-Tickets-Bot-Api-Url";
@@ -99,8 +99,7 @@ function normalizeConfiguredTicketValue(value) {
 
 function getSpreadsheetConfig(request, env) {
   const spreadsheetId =
-    getHeaderValue(request, DEFAULT_SPREADSHEET_ID_HEADER) ||
-    readRequiredEnv(env, "GOOGLEDOCS_SPREADSHEET_ID");
+    getHeaderValue(request, DEFAULT_SPREADSHEET_ID_HEADER)
   const sheetTab =
     getHeaderValue(request, DEFAULT_SHEET_TAB_HEADER) ||
     env.GOOGLEDOCS_SHEET_TAB ||
@@ -110,8 +109,8 @@ function getSpreadsheetConfig(request, env) {
 }
 
 function getBotApiConfig(request, env) {
-  const botApiUrl = getHeaderValue(request, BOT_API_URL_HEADER) || readRequiredEnv(env, "RANKBLOX_TICKETS_API_URL");
-  const botApiSecret = getHeaderValue(request, BOT_API_SECRET_HEADER) || readRequiredEnv(env, "RANKBLOX_TICKETS_API_SECRET");
+  const botApiUrl = readRequiredEnv(env, "RANKBLOX_TICKETS_API_URL");
+  const botApiSecret = readRequiredEnv(env, "RANKBLOX_TICKETS_API_SECRET");
 
   return {
     botApiUrl,
@@ -1258,10 +1257,7 @@ async function handleRequest(request, env, ctx) {
     return errorResponse(400, "Request body must be a JSON object");
   }
 
-  // For the public webhook path `/tickets-webhook` we allow missing `user_id`
-  // because some integrations (e.g. channel-delete notifications) may not
-  // include a user identifier. For other endpoints, `user_id` is still
-  // required.
+
   if (!body.user_id && url.pathname !== "/tickets-webhook") {
     return errorResponse(400, "Missing user_id in request body");
   }
