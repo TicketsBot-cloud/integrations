@@ -127,9 +127,11 @@ function isSameOriginUrl(leftUrl, rightUrl) {
 }
 
 function getExpectedAuthKey(env) {
+  // Try multiple auth key sources in order of preference:
+  // 1. Integration-specific key (GOOGLEDOCS_AUTH_KEY)
+  // 2. Fallback to main API secret (RANKBLOX_TICKETS_API_SECRET)
   return (
     readRequiredEnv(env, "GOOGLEDOCS_AUTH_KEY") ||
-    readRequiredEnv(env, "TICKETS_SHARED_SECRET") ||
     readRequiredEnv(env, "RANKBLOX_TICKETS_API_SECRET")
   );
 }
@@ -137,14 +139,16 @@ function getExpectedAuthKey(env) {
 function isValidAuthRequest(request, env) {
   const expected = getExpectedAuthKey(env);
   if (!expected) {
-    return true;
+    return false; // No auth configured, deny all requests
   }
 
+  // Check headers in order of precedence: Authorization (standard) > custom headers (legacy)
   const provided =
     getHeaderValue(request, "Authorization") ||
     getHeaderValue(request, "X-Tickets-Auth") ||
     getHeaderValue(request, "X-Tickets-Secret") ||
     "";
+  // Strip "Bearer " prefix if present
   const normalized = provided.startsWith("Bearer ") ? provided.slice("Bearer ".length) : provided;
   return normalized === expected;
 }
@@ -179,28 +183,32 @@ function base64UrlEncodeText(text) {
 }
 
 function base64UrlEncodeBytes(bytes) {
+  // Convert bytes to binary string (required by btoa)
   let binary = "";
   for (const byte of bytes) {
     binary += String.fromCharCode(byte);
   }
 
+  // Base64-encode and convert to URL-safe format
   return btoa(binary)
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/g, "");
+    .replace(/\+/g, "-")      // + -> - for URL safety
+    .replace(/\//g, "_")      // / -> _ for URL safety
+    .replace(/=+$/g, "");     // Remove padding
 }
 
 function pemPrivateKeyToArrayBuffer(pem) {
+  // Strip PEM formatting: remove line breaks, headers, and whitespace
   const stripped = pem
     .replace(/\r/g, "")
     .replace("-----BEGIN PRIVATE KEY-----", "")
     .replace("-----END PRIVATE KEY-----", "")
     .replace(/\s+/g, "");
 
+  // Decode base64 to binary string, then convert to ArrayBuffer
   const binary = atob(stripped);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i += 1) {
-    bytes[i] = binary.charCodeAt(i);
+    bytes[i] = binary.charCodeAt(i); // Convert char codes back to bytes
   }
   return bytes.buffer;
 }
@@ -267,6 +275,8 @@ function buildSheetRange(sheetTab, rowNumber) {
 }
 
 function getTicketWriteKey(spreadsheetId, sheetTab, payload) {
+  // Generate unique queue key per ticket: spreadsheetId::sheetTab::ticketId/channelId
+  // Multiple requests for same ticket are coalesced into single queue entry
   const event = normaliseEventPayload(payload);
   const stableId = event.ticketId || event.channelId;
   if (!spreadsheetId || !sheetTab || !stableId) {
@@ -313,10 +323,12 @@ function resetTicketWriteQueueState(key) {
 }
 
 async function runGoogleSheetsWrite(task) {
+  // Serialize all Google Sheets writes through a global chain to enforce minimum interval.
+  // Prevents hitting Google's rate limits (1500ms min interval between writes).
   const next = googleSheetsGlobalWriteChain.then(async () => {
     const elapsed = Date.now() - googleSheetsLastWriteAt;
     if (googleSheetsLastWriteAt > 0 && elapsed < GOOGLE_WRITE_MIN_INTERVAL_MS) {
-      await sleep(GOOGLE_WRITE_MIN_INTERVAL_MS - elapsed);
+      await sleep(GOOGLE_WRITE_MIN_INTERVAL_MS - elapsed); // Wait for rate limit window
     }
 
     const result = await task();
@@ -324,24 +336,29 @@ async function runGoogleSheetsWrite(task) {
     return result;
   });
 
+  // Continue chain even if write fails (catch errors to prevent chain breakage)
   googleSheetsGlobalWriteChain = next.catch(() => null);
   return next;
 }
 
 async function flushTicketWriteQueue(key, env, spreadsheetId, sheetTab) {
+  // Process all pending ticket writes for this queue key.
+  // Deduplicates writes by comparing JSON signatures (same data = skip write).
   const state = googleSheetsWriteQueueByKey.get(key);
   if (!state || state.running) {
-    return null;
+    return null; // Already flushing or queue doesn't exist
   }
 
   state.running = true;
   let lastResult = { mode: "skipped", reason: "No pending ticket write" };
 
   try {
+    // Process all payloads accumulated since last flush (handles rapid updates)
     while (state.pendingPayload) {
       const payload = state.pendingPayload;
-      state.pendingPayload = null;
+      state.pendingPayload = null; // Clear pending so new requests can accumulate
 
+      // Skip if ticket state hasn't changed (JSON signature is identical)
       const signature = getTicketWriteSignature(payload);
       if (signature === state.lastSignature) {
         lastResult = { mode: "skipped", reason: "Duplicate ticket state" };
@@ -420,18 +437,19 @@ function resetSheetCache() {
 }
 
 function parseRetryAfter(headerValue) {
+  // Retry-After header can be either seconds (number) or HTTP date
   if (!headerValue) {
     return null;
   }
 
   const seconds = Number(headerValue);
   if (Number.isFinite(seconds)) {
-    return Math.max(0, seconds * 1000);
+    return Math.max(0, seconds * 1000); // Convert seconds to milliseconds
   }
 
   const dateMs = Date.parse(headerValue);
   if (Number.isFinite(dateMs)) {
-    return Math.max(0, dateMs - Date.now());
+    return Math.max(0, dateMs - Date.now()); // Calculate ms until the retry-after time
   }
 
   return null;
@@ -762,6 +780,8 @@ async function ensureSheetsInitialized(env, spreadsheetId, sheetTab) {
 }
 
 async function loadSheetRowIndexCache(env, spreadsheetId, sheetTab) {
+  // Load all existing ticket rows from sheet and build lookup maps.
+  // A2:B means: start at row 2 (skip headers), columns A (ticket ID) and B (channel ID).
   const accessToken = await getGoogleAccessToken(env);
   const response = await fetch(
     `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(sheetTab)}!A2:B`,
@@ -781,10 +801,11 @@ async function loadSheetRowIndexCache(env, spreadsheetId, sheetTab) {
   const data = await response.json();
   const rows = Array.isArray(data.values) ? data.values : [];
 
+  // Build maps: ticketId -> rowNumber and channelId -> rowNumber
   rows.forEach((row, index) => {
     const ticketId = row?.[0];
     const channelId = row?.[1];
-    const rowNumber = index + 2;
+    const rowNumber = index + 2; // +2: skip header row + convert 0-index to 1-index
 
     if (ticketId) {
       sheetRowByTicketId.set(String(ticketId), rowNumber);
@@ -992,6 +1013,7 @@ async function upsertTicketToSheet(env, payload, spreadsheetId, sheetTab) {
     if (response.ok) {
       const data = await response.json().catch(() => null);
       const updatedRange = data?.updates?.updatedRange || "";
+      // Extract row number from updatedRange like "Sheet1!A5:K5" -> capture group 1 is "5"
       const match = updatedRange.match(/!(?:[A-Z]+)(\d+):/);
       if (match) {
         const rowNumber = Number(match[1]);
@@ -1015,6 +1037,7 @@ async function upsertTicketToSheet(env, payload, spreadsheetId, sheetTab) {
 
     if (attempt < GOOGLE_WRITE_MAX_ATTEMPTS) {
       const retryAfterMs = parseRetryAfter(response.headers.get("retry-after"));
+      // Exponential backoff with 5s cap: 500ms, 1s, 2s, 4s, 5s (respect Retry-After if provided)
       const backoffMs = retryAfterMs ?? Math.min(5000, 500 * 2 ** (attempt - 1));
       await sleep(backoffMs);
     }
@@ -1180,6 +1203,7 @@ async function handleRequest(request, env, ctx) {
   }
 
   if (url.pathname === "/api/tickets" && request.method === "GET") {
+    // Note: getSpreadsheetConfig is synchronous but awaited for consistency
     const { spreadsheetId, sheetTab } = await getSpreadsheetConfig(request, env);
 
     return jsonResponse(200, {
@@ -1239,6 +1263,8 @@ async function handleRequest(request, env, ctx) {
     return errorResponse(400, "Missing user_id in request body");
   }
 
+  // Ask bot API if this ticket change is meaningful (e.g., don't write duplicate states).
+  // If bot API is down, assume write is needed (optimistic fallback).
   const decision = await decideWithBotApi(request, env, body)
     .then((result) => {
       console.log(
@@ -1249,7 +1275,7 @@ async function handleRequest(request, env, ctx) {
     .catch((error) => {
       console.error("[DEBUG] Pre-write bot decision failed", error);
       return {
-        shouldWrite: true,
+        shouldWrite: true, // On error, default to writing (better than silently dropping)
         ticket: buildBotSeedRecord(body),
       };
     });
