@@ -141,28 +141,29 @@ function isValidAuthRequest(request, env) {
   }
 
   const provided =
+    getHeaderValue(request, "Authorization") ||
     getHeaderValue(request, "X-Tickets-Auth") ||
     getHeaderValue(request, "X-Tickets-Secret") ||
-    getHeaderValue(request, "Authorization") ||
     "";
   const normalized = provided.startsWith("Bearer ") ? provided.slice("Bearer ".length) : provided;
   return normalized === expected;
 }
 
-async function validateSecrets(env, secrets) {
-  const spreadsheetId = secrets.spreadsheet_id || secrets.GOOGLEDOCS_SPREADSHEET_ID;
-  const sheetTab = secrets.sheet_tab || secrets.GOOGLEDOCS_SHEET_TAB || DEFAULT_SHEET_TAB;
+async function validateSecrets(request, env) {
+  const spreadsheetId = getHeaderValue(request, DEFAULT_SPREADSHEET_ID_HEADER);
+  const sheetTabHeader = request.headers.get(DEFAULT_SHEET_TAB_HEADER);
+  const sheetTab = getHeaderValue(request, DEFAULT_SHEET_TAB_HEADER) || DEFAULT_SHEET_TAB;
 
   if (!spreadsheetId) {
-    return errorResponse(400, "Missing spreadsheet_id.");
+    return errorResponse(400, `Missing ${DEFAULT_SPREADSHEET_ID_HEADER} header.`);
   }
 
   if (!isSpreadsheetId(spreadsheetId)) {
-    return errorResponse(400, "Your spreadsheet_id is invalid.");
+    return errorResponse(400, "Invalid spreadsheet id format.");
   }
 
-  if (!isValidSheetTabName(sheetTab)) {
-    return errorResponse(400, "Your sheet_tab is invalid.");
+  if (sheetTabHeader && !isValidSheetTabName(sheetTab)) {
+    return errorResponse(400, "Invalid sheet tab name.");
   }
 
   return verifySpreadsheetAccess(env, spreadsheetId, sheetTab);
@@ -872,10 +873,10 @@ async function verifySpreadsheetAccess(env, spreadsheetId, sheetTab) {
     }
 
     if (response.status === 429) {
-      return errorResponse(400, "Google Sheets rate limit exceeded. Try again shortly.");
+      return errorResponse(500, "Google Sheets rate limit exceeded while validating the spreadsheet. Try again shortly.");
     }
 
-    return errorResponse(400, "Unable to verify spreadsheet access.");
+    return errorResponse(500, "Google Sheets is temporarily unavailable while validating the spreadsheet.");
   }
 
   const data = await response.json();
@@ -1174,11 +1175,11 @@ async function handleRequest(request, env, ctx) {
     return privacyPolicyResponse();
   }
 
-  if (url.pathname === "/api/tickets" && request.method === "GET") {
-    if (!isValidAuthRequest(request, env)) {
-      return errorResponse(401, "Invalid auth key");
-    }
+  if (!isValidAuthRequest(request, env)) {
+    return errorResponse(401, "Invalid auth key");
+  }
 
+  if (url.pathname === "/api/tickets" && request.method === "GET") {
     const { spreadsheetId, sheetTab } = await getSpreadsheetConfig(request, env);
 
     return jsonResponse(200, {
@@ -1195,47 +1196,24 @@ async function handleRequest(request, env, ctx) {
   }
 
   if (url.pathname === "/validate-secrets") {
-    let secrets;
-    try {
-      secrets = await request.json();
-    } catch {
-      return errorResponse(400, "Invalid request body");
-    }
-
-    if (!secrets || typeof secrets !== "object" || Array.isArray(secrets)) {
-      return errorResponse(400, "Request body must be a JSON object");
-    }
-
-    const accessCheck = await validateSecrets(env, secrets);
+    const accessCheck = await validateSecrets(request, env);
     if (accessCheck) {
       return accessCheck;
     }
 
-    return new Response(null, { status: 204 });
+    return jsonResponse(200, {});
   }
 
   if (url.pathname === "/events") {
-    if (!isValidAuthRequest(request, env)) {
-      return errorResponse(401, "Invalid auth key");
-    }
-
     return handleLifecycleEvent(request, env, ctx);
   }
 
   if (url.pathname === "/api/tickets/bootstrap" || url.pathname === "/api/tickets/seed") {
-    if (!isValidAuthRequest(request, env)) {
-      return errorResponse(401, "Invalid auth key");
-    }
-
     return handleTicketSeedRequest(request, env);
   }
 
   if (url.pathname !== "/" && url.pathname !== "/tickets-webhook") {
     return errorResponse(404, "Not Found");
-  }
-
-  if (!isValidAuthRequest(request, env)) {
-    return errorResponse(401, "Invalid auth key");
   }
 
   const { spreadsheetId, sheetTab } = await getSpreadsheetConfig(request, env);
@@ -1256,7 +1234,6 @@ async function handleRequest(request, env, ctx) {
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     return errorResponse(400, "Request body must be a JSON object");
   }
-
 
   if (!body.user_id && url.pathname !== "/tickets-webhook") {
     return errorResponse(400, "Missing user_id in request body");

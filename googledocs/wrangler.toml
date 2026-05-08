@@ -8,6 +8,9 @@ enabled = true
 
 [vars]
 SENTRY_DSN = "https://f7d1718105706ab2e6f4402d4bc7b802@sentry.tkts.bot/13"
+#[[kv_namespaces]]
+#binding = "INTEGRATION_CACHE"
+#id = "fbdf23642f6a40d0b5876abf3265910d"
 
 # Secrets (set via `wrangler secret put <NAME>`):
 #   GOOGLEDOCS_AUTH_KEY — token expected in the X-Tickets-Auth header
@@ -17,4 +20,9 @@ SENTRY_DSN = "https://f7d1718105706ab2e6f4402d4bc7b802@sentry.tkts.bot/13"
 #   RANKBLOX_TICKETS_API_SECRET — token sent to the RankBlox ticket bot API
 # Optional vars/secrets:
 #   GOOGLEDOCS_SHEET_TAB — sheet tab to append to (default: Tickets)
-#   RANKBLOX_TICKETS_API_URL — base URL for the RankBlox ticket bot API
+# Integration request headers:
+#   Authorization: Bearer <GOOGLEDOCS_AUTH_KEY>
+#   X-Tickets-Google-Sheets-Id: <spreadsheet id override>
+#   X-Tickets-Google-Sheet-Tab: <sheet tab override>
+#   X-Tickets-Bot-Api-Url: <bot api url override>
+#   X-Tickets-Bot-Api-Secret: <bot api secret override>
