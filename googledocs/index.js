@@ -76,7 +76,7 @@ function privacyPolicyResponse() {
     "- Local worker cache is temporary and does not persist across deployments or restarts",
     "",
     "Contact:",
-    "- For privacy questions, contact the developer @thebeston on Discord or via email at thebeston123@rankblox.com",
+    "- For privacy questions, contact the developer @thebeston on Discord or via email at thebeston123@rankblox.xyz",
   ].join("\n");
 
   return new Response(body, {
