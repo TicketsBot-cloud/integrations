@@ -21,10 +21,16 @@ async function fetchConnection(authKey, userId) {
 
 function buildPayload(connection) {
   return {
+    melonly_user_id: connection.userId,
+    melonly_name: connection.name,
+    melonly_nickname: connection.nickname,
+    melonly_preferred_username: connection.preferredUsername,
     melonly_roblox_id: connection.robloxId,
-    melonly_discord_id: connection.userId,
+    melonly_profile: connection.profile,
+    melonly_headshot_image: connection.headShotImage,
     melonly_created_at: connection.createdAt,
     melonly_last_updated_at: connection.lastUpdatedAt,
+    melonly_roblox_created_at: connection.robloxCreatedAt,
   };
 }
 
