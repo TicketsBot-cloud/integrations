@@ -52,26 +52,48 @@ function buildPayload(user) {
   };
 }
 
-async function handleValidate(request) {
-  const apiKey = request.headers.get("X-Bloxlink-Api-Key");
-  if (!apiKey) {
-    return jsonResponse({ error: "Missing X-Bloxlink-Api-Key header" }, { status: 400 });
+async function handleValidate({ apiKey, body }) {
+  const { guild_id: guildId } = body;
+  if (!guildId) {
+    return jsonResponse({ error: "Invalid request body" }, { status: 400 });
   }
   if (!API_KEY_REGEX.test(apiKey)) {
     return jsonResponse({ error: "Invalid Bloxlink API key format" }, { status: 400 });
   }
 
-  return jsonResponse({});
-}
+  const res = await fetch(
+    `${BLOXLINK_API}/guilds/${guildId}/discord-to-roblox`,
+    { headers: { Authorization: apiKey } },
+  );
 
-async function handleLookup(request, env) {
-  let body;
+  let data = null;
   try {
-    body = await request.json();
+    data = await res.json();
   } catch {
-    return jsonResponse({ error: "Invalid request body" }, { status: 400 });
+    // Some upstream errors may not be JSON.
   }
 
+  const upstreamError = data?.error;
+  if (
+    upstreamError === "You must provide an api-key" ||
+    upstreamError === "Invalid API Key" ||
+    upstreamError === "Guild ID does not match API Key"
+  ) {
+    return jsonResponse({ error: upstreamError }, { status: 400 });
+  }
+
+  // "User not found" means the key is valid — no user was provided intentionally.
+  if (res.ok || upstreamError === "User not found") {
+    return jsonResponse({});
+  }
+
+  return jsonResponse(
+    { error: `Bloxlink API responded with ${res.status} — it may be experiencing an outage` },
+    { status: 500 },
+  );
+}
+
+async function handleLookup(env, { apiKey, body }) {
   const { guild_id: guildId, user_id: userId } = body;
   if (!guildId || !userId) {
     return jsonResponse({ error: "Invalid request body" }, { status: 400 });
@@ -84,11 +106,6 @@ async function handleLookup(request, env) {
       status: 200,
       headers: { "content-type": "application/json", "x-from-cache": "true" },
     });
-  }
-
-  const apiKey = request.headers.get("X-Bloxlink-Api-Key");
-  if (!apiKey) {
-    return jsonResponse({ error: "Missing X-Bloxlink-Api-Key header" }, { status: 400 });
   }
 
   let robloxId;
@@ -119,12 +136,25 @@ async function handleRequest(request, env) {
     return jsonResponse({ error: "Method Not Allowed" }, { status: 405 });
   }
 
+  const apiKey = request.headers.get("X-Bloxlink-Api-Key");
+  if (!apiKey) {
+    return jsonResponse({ error: "Missing X-Bloxlink-Api-Key header" }, { status: 400 });
+  }
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return jsonResponse({ error: "Invalid request body" }, { status: 400 });
+  }
+
   const url = new URL(request.url);
+  const requestContext = { apiKey, body };
 
   if (url.pathname === "/validate") {
-    return handleValidate(request);
+    return handleValidate(requestContext);
   }
-  return handleLookup(request, env);
+  return handleLookup(env, requestContext);
 }
 
 export default Sentry.withSentry(
