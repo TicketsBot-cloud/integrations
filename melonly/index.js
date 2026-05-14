@@ -34,10 +34,6 @@ function buildPayload(connection) {
   };
 }
 
-async function handleValidate() {
-  return jsonResponse({});
-}
-
 async function handleLookup(request, env, authKey) {
   let body;
   try {
@@ -91,11 +87,6 @@ async function handleRequest(request, env) {
     return jsonResponse({ error: "Method Not Allowed" }, { status: 405 });
   }
 
-  const url = new URL(request.url);
-
-  if (url.pathname === "/validate") {
-    return handleValidate();
-  }
   return handleLookup(request, env, authKey);
 }
 
