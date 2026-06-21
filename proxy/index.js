@@ -16,6 +16,7 @@ const SERVICE_BINDINGS = {
   "fivem.tickets-v2.workers.dev": "FIVEM",
   "guild-lookup-worker.tickets-v2.workers.dev": "GUILDLOOKUP",
   "bloxlink.tickets-v2.workers.dev": "BLOXLINK",
+  "melonly.tickets-v2.workers.dev": "MELONLY",
 };
 
 function errorResponse(status, message) {
